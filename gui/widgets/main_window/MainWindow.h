@@ -2,7 +2,8 @@
 
 #include <QMainWindow>
 
-class ImageView;
+class QMenu;
+class QTabWidget;
 
 class MainWindow : public QMainWindow
 {
@@ -14,5 +15,6 @@ private:
     void openFile();
     void showAbout();
 
-    ImageView* _imageView;
+    QTabWidget* _tabs;
+    QMenu* _contextMenu;
 };

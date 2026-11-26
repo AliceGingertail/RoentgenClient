@@ -12,6 +12,7 @@
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QStatusBar>
+#include <QTabWidget>
 
 #include <algorithm>
 #include <exception>
@@ -19,10 +20,22 @@
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent, Qt::Window | Qt::CustomizeWindowHint | Qt::WindowTitleHint
                               | Qt::WindowCloseButtonHint)
-    , _imageView(new ImageView(this))
+    , _tabs(new QTabWidget(this))
+    , _contextMenu(new QMenu(this))
 {
     resize(1024, 720);
-    setCentralWidget(_imageView);
+    setCentralWidget(_tabs);
+
+    _tabs->setTabsClosable(true);
+    connect(_tabs, &QTabWidget::tabCloseRequested, this, [this](int index) {
+        auto* page = _tabs->widget(index);
+        _tabs->removeTab(index);
+        page->deleteLater();
+    });
+
+    connect(_tabs, &QTabWidget::currentChanged, this, [this](int index) {
+        statusBar()->showMessage(index < 0 ? tr("Ready") : _tabs->tabToolTip(index));
+    });
 
     auto* fileMenu = menuBar()->addMenu(tr("&File"));
     auto* openAction = fileMenu->addAction(tr("&Open…"));
@@ -33,13 +46,11 @@ MainWindow::MainWindow(QWidget* parent)
     fileMenu->addAction(tr("&Brightness/contrast…"));
     fileMenu->addAction(tr("&Quit"));
 
-    auto* contextMenu = new QMenu(_imageView);
-    contextMenu->addAction(openAction);
-    _imageView->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(_imageView, &QWidget::customContextMenuRequested, contextMenu,
-            [this, contextMenu](const QPoint& position) {
-                contextMenu->popup(_imageView->viewport()->mapToGlobal(position));
-            });
+    _contextMenu->addAction(openAction);
+    _tabs->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(_tabs, &QWidget::customContextMenuRequested, this, [this](const QPoint& position) {
+        _contextMenu->popup(_tabs->mapToGlobal(position));
+    });
 
     auto* helpMenu = menuBar()->addMenu(tr("&Help"));
     auto* aboutAction = helpMenu->addAction(tr("&About"));
@@ -65,8 +76,18 @@ void MainWindow::openFile()
         for (int row = 0; row < preview.height(); ++row) {
             std::copy_n(grayscale.data() + row * preview.width(), preview.width(), preview.scanLine(row));
         }
-        _imageView->setImage(preview);
-        statusBar()->showMessage(QFileInfo(path).fileName());
+
+        auto* view = new ImageView(_tabs);
+        view->setImage(preview);
+        view->setContextMenuPolicy(Qt::CustomContextMenu);
+        connect(view, &QWidget::customContextMenuRequested, this, [this, view](const QPoint& position) {
+            _contextMenu->popup(view->viewport()->mapToGlobal(position));
+        });
+
+        const auto index = _tabs->addTab(view, QFileInfo(path).fileName().replace("&", "&&"));
+        _tabs->setTabToolTip(index, path);
+        _tabs->setCurrentIndex(index);
+        statusBar()->showMessage(path);
     } catch (const std::exception& error) {
         QMessageBox::warning(this, tr("Could not open image"),
                              tr("Could not read %1.\n%2")
