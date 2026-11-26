@@ -43,7 +43,7 @@ ImageView::ImageView(XrayImage image, QWidget* parent)
 
     connect(&_previewWatcher, &QFutureWatcher<QImage>::finished, this, [this] {
         _rendering = false;
-        
+
         // Устаревшее превью пропускаем и запускаем пересчёт с последними настройками
         if (_renderingAdjustment != _adjustment) {
             renderPreview();

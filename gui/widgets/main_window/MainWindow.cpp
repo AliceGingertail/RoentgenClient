@@ -19,8 +19,7 @@
 #include <utility>
 
 MainWindow::MainWindow(QWidget* parent)
-    : QMainWindow(parent, Qt::Window | Qt::CustomizeWindowHint | Qt::WindowTitleHint
-                              | Qt::WindowCloseButtonHint)
+    : QMainWindow(parent, Qt::Window)
     , _tabs(new QTabWidget(this))
     , _contextMenu(new QMenu(this))
     , _pixelStatus(new QLabel(this))
@@ -35,12 +34,6 @@ MainWindow::MainWindow(QWidget* parent)
         page->deleteLater();
     });
 
-    statusBar()->addPermanentWidget(_pixelStatus);
-    connect(_tabs, &QTabWidget::currentChanged, this, [this](int index) {
-        _pixelStatus->clear();
-        statusBar()->showMessage(index < 0 ? tr("Ready") : _tabs->tabToolTip(index));
-    });
-
     auto* fileMenu = menuBar()->addMenu(tr("&File"));
     auto* openAction = fileMenu->addAction(tr("&Open…"));
     openAction->setShortcut(QKeySequence::Open);
@@ -53,10 +46,14 @@ MainWindow::MainWindow(QWidget* parent)
     connect(_tabs, &QTabWidget::currentChanged, adjustmentAction, [adjustmentAction](int index) {
         adjustmentAction->setEnabled(index >= 0);
     });
-    fileMenu->addAction(tr("&Quit"));
 
+    auto quitAction = fileMenu->addAction(tr("&Quit"));
+    connect(quitAction, &QAction::triggered, this, &MainWindow::close);
+
+    // Кнопки контекстного меню
     _contextMenu->addAction(openAction);
     _contextMenu->addAction(adjustmentAction);
+
     _tabs->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(_tabs, &QWidget::customContextMenuRequested, this, [this](const QPoint& position) {
         _contextMenu->popup(_tabs->mapToGlobal(position));
@@ -66,18 +63,20 @@ MainWindow::MainWindow(QWidget* parent)
     auto* aboutAction = helpMenu->addAction(tr("&About"));
     connect(aboutAction, &QAction::triggered, this, &MainWindow::showAbout);
 
-    addToolBar("Tools");
-
-    statusBar()->showMessage(tr("Ready"));
+    // Нижний статус бар с координатами и именем файлаа
+    statusBar()->addPermanentWidget(_pixelStatus);
+    connect(_tabs, &QTabWidget::currentChanged, this, [this](int index) {
+        _pixelStatus->clear();
+        statusBar()->showMessage(index < 0 ? tr("Ready") : _tabs->tabToolTip(index));
+    });
 }
 
 void MainWindow::openFile()
 {
     const auto path = QFileDialog::getOpenFileName(this, tr("Open X-ray image"), {},
                                                    tr("RAW images (*.raw);;All files (*)"));
-    if (path.isEmpty()) {
+    if (path.isEmpty())
         return;
-    }
 
     try {
         auto image = FileParser::read(std::filesystem::path(path.toStdU16String()));
@@ -106,7 +105,7 @@ void MainWindow::openFile()
 
 void MainWindow::showBrightnessContrast()
 {
-    auto* view = qobject_cast<ImageView*>(_tabs->currentWidget());
+    const auto view = qobject_cast<ImageView*>(_tabs->currentWidget());
     if (!view) {
         return;
     }
