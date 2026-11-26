@@ -7,21 +7,30 @@
 #include <QPixmap>
 #include <QScrollBar>
 #include <QWheelEvent>
+#include <QtConcurrentRun>
 
 #include <algorithm>
 #include <cmath>
 #include <utility>
 
-ImageView::ImageView(XrayImage image, QWidget* parent)
-    : QGraphicsView(parent)
-    , _image(std::move(image))
-    , _imageItem(nullptr)
+namespace {
+QImage makePreview(const XrayImage& image, int brightness, int contrast)
 {
-    const auto grayscale = _image.toGrayscale8();
+    const auto grayscale = image.toGrayscale8(brightness, contrast);
     QImage preview(XrayImage::width, XrayImage::height, QImage::Format_Grayscale8);
     for (int row = 0; row < preview.height(); ++row) {
         std::copy_n(grayscale.data() + row * preview.width(), preview.width(), preview.scanLine(row));
     }
+    return preview;
+}
+}
+
+ImageView::ImageView(XrayImage image, QWidget* parent)
+    : QGraphicsView(parent)
+    , _image(std::make_shared<const XrayImage>(std::move(image)))
+    , _imageItem(nullptr)
+{
+    const auto preview = makePreview(*_image, 0, 0);
 
     setScene(new QGraphicsScene(this));
     _imageItem = scene()->addPixmap(QPixmap::fromImage(preview));
@@ -31,6 +40,41 @@ ImageView::ImageView(XrayImage image, QWidget* parent)
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     setDragMode(QGraphicsView::ScrollHandDrag);
     viewport()->setMouseTracking(true);
+
+    connect(&_previewWatcher, &QFutureWatcher<QImage>::finished, this, [this] {
+        _rendering = false;
+        
+        // Устаревшее превью пропускаем и запускаем пересчёт с последними настройками
+        if (_renderingAdjustment != _adjustment) {
+            renderPreview();
+            return;
+        }
+        _imageItem->setPixmap(QPixmap::fromImage(_previewWatcher.result()));
+    });
+}
+
+void ImageView::setAdjustment(int brightness, int contrast)
+{
+    const std::pair adjustment{brightness, contrast};
+    if (_adjustment == adjustment) {
+        return;
+    }
+    _adjustment = adjustment;
+    if (!_rendering) {
+        renderPreview();
+    }
+}
+
+void ImageView::renderPreview()
+{
+    _rendering = true;
+    _renderingAdjustment = _adjustment;
+    const auto [brightness, contrast] = _renderingAdjustment;
+
+    // Задача владеет исходным снимком и может закончиться после закрытия вкладки
+    _previewWatcher.setFuture(QtConcurrent::run([image = _image, brightness, contrast] {
+        return makePreview(*image, brightness, contrast);
+    }));
 }
 
 bool ImageView::viewportEvent(QEvent* event)
@@ -93,5 +137,5 @@ void ImageView::reportPixel(const QPoint& position)
 
     const auto x = static_cast<int>(point.x());
     const auto y = static_cast<int>(point.y());
-    emit pixelHovered(x, y, _image.intensities[y * XrayImage::width + x]);
+    emit pixelHovered(x, y, _image->intensities[y * XrayImage::width + x]);
 }

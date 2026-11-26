@@ -11,7 +11,7 @@ struct XrayImage
 
     std::vector<std::uint32_t> intensities;
 
-    [[nodiscard]] std::vector<std::uint8_t> toGrayscale8() const;
+    [[nodiscard]] std::vector<std::uint8_t> toGrayscale8(int brightness = 0, int contrast = 0) const;
 };
 
 class FileParser

@@ -3,6 +3,7 @@
 #include <itkRawImageIO.h>
 
 #include <algorithm>
+#include <cmath>
 #include <stdexcept>
 
 XrayImage FileParser::read(const std::filesystem::path& path)
@@ -29,19 +30,23 @@ XrayImage FileParser::read(const std::filesystem::path& path)
     return image;
 }
 
-std::vector<std::uint8_t> XrayImage::toGrayscale8() const
+std::vector<std::uint8_t> XrayImage::toGrayscale8(int brightness, int contrast) const
 {
     std::vector<std::uint8_t> grayscale(intensities.size());
     const auto peak = std::ranges::max_element(intensities);
-    // Для пустого или чёрного кадра масштабирование не требуется.
-    if (peak == intensities.end() || *peak == 0) {
+    if (peak == intensities.end()) {
         return grayscale;
     }
 
-    // Масштабируем от 0 до 255 с округлением и 64-битным умножением.
-    const uint64_t maxIntensity = *peak;
-    std::ranges::transform(intensities, grayscale.begin(), [maxIntensity](uint32_t value) {
-        return static_cast<std::uint8_t>((value * uint64_t{255} + maxIntensity / 2) / maxIntensity);
+    const auto maxIntensity = std::max(*peak, std::uint32_t{1});
+    const auto offset = std::clamp(brightness, -100, 100) * 255.0 / 100.0;
+    const auto gain = std::exp2(std::clamp(contrast, -100, 100) / 50.0);
+
+    // Меняем контраст вокруг середины шкалы и округляем только на выходе
+    std::ranges::transform(intensities, grayscale.begin(), [maxIntensity, offset, gain](std::uint32_t value) {
+        const auto normalized = value * 255.0 / maxIntensity;
+        const auto adjusted = (normalized - 127.5) * gain + 127.5 + offset;
+        return static_cast<std::uint8_t>(std::lround(std::clamp(adjusted, 0.0, 255.0)));
     });
     return grayscale;
 }

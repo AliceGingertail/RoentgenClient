@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include "../brightness_contrast_dialog/BrightnessContrastDialog.h"
 #include "../help_popup/HelpPopup.h"
 #include "../image_view/ImageView.h"
 #include "FileParser.h"
@@ -46,10 +47,16 @@ MainWindow::MainWindow(QWidget* parent)
 
     connect(openAction, &QAction::triggered, this, &MainWindow::openFile);
 
-    fileMenu->addAction(tr("&Brightness/contrast…"));
+    auto* adjustmentAction = fileMenu->addAction(tr("&Brightness/contrast…"));
+    adjustmentAction->setEnabled(false);
+    connect(adjustmentAction, &QAction::triggered, this, &MainWindow::showBrightnessContrast);
+    connect(_tabs, &QTabWidget::currentChanged, adjustmentAction, [adjustmentAction](int index) {
+        adjustmentAction->setEnabled(index >= 0);
+    });
     fileMenu->addAction(tr("&Quit"));
 
     _contextMenu->addAction(openAction);
+    _contextMenu->addAction(adjustmentAction);
     _tabs->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(_tabs, &QWidget::customContextMenuRequested, this, [this](const QPoint& position) {
         _contextMenu->popup(_tabs->mapToGlobal(position));
@@ -95,6 +102,19 @@ void MainWindow::openFile()
                              tr("Could not read %1.\n%2")
                                  .arg(QFileInfo(path).fileName(), QString::fromLocal8Bit(error.what())));
     }
+}
+
+void MainWindow::showBrightnessContrast()
+{
+    auto* view = qobject_cast<ImageView*>(_tabs->currentWidget());
+    if (!view) {
+        return;
+    }
+
+    const auto [brightness, contrast] = view->adjustment();
+    BrightnessContrastDialog dialog(brightness, contrast, this);
+    connect(&dialog, &BrightnessContrastDialog::adjustmentChanged, view, &ImageView::setAdjustment);
+    dialog.exec();
 }
 
 void MainWindow::showAbout()

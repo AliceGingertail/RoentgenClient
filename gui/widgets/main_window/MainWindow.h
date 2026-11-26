@@ -14,6 +14,7 @@ public:
 
 private:
     void openFile();
+    void showBrightnessContrast();
     void showAbout();
 
     QTabWidget* _tabs;
