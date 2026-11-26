@@ -2,6 +2,7 @@
 
 #include <QMainWindow>
 
+class QLabel;
 class QMenu;
 class QTabWidget;
 
@@ -17,4 +18,5 @@ private:
 
     QTabWidget* _tabs;
     QMenu* _contextMenu;
+    QLabel* _pixelStatus;
 };

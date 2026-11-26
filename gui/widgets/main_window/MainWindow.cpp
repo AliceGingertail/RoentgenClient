@@ -6,22 +6,23 @@
 #include <QAction>
 #include <QFileDialog>
 #include <QFileInfo>
-#include <QImage>
 #include <QKeySequence>
+#include <QLabel>
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QStatusBar>
 #include <QTabWidget>
 
-#include <algorithm>
 #include <exception>
+#include <utility>
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent, Qt::Window | Qt::CustomizeWindowHint | Qt::WindowTitleHint
                               | Qt::WindowCloseButtonHint)
     , _tabs(new QTabWidget(this))
     , _contextMenu(new QMenu(this))
+    , _pixelStatus(new QLabel(this))
 {
     resize(1024, 720);
     setCentralWidget(_tabs);
@@ -33,7 +34,9 @@ MainWindow::MainWindow(QWidget* parent)
         page->deleteLater();
     });
 
+    statusBar()->addPermanentWidget(_pixelStatus);
     connect(_tabs, &QTabWidget::currentChanged, this, [this](int index) {
+        _pixelStatus->clear();
         statusBar()->showMessage(index < 0 ? tr("Ready") : _tabs->tabToolTip(index));
     });
 
@@ -70,15 +73,13 @@ void MainWindow::openFile()
     }
 
     try {
-        const auto image = FileParser::read(std::filesystem::path(path.toStdU16String()));
-        const auto grayscale = image.toGrayscale8();
-        QImage preview(XrayImage::width, XrayImage::height, QImage::Format_Grayscale8);
-        for (int row = 0; row < preview.height(); ++row) {
-            std::copy_n(grayscale.data() + row * preview.width(), preview.width(), preview.scanLine(row));
-        }
+        auto image = FileParser::read(std::filesystem::path(path.toStdU16String()));
+        auto* view = new ImageView(std::move(image), _tabs);
+        connect(view, &ImageView::pixelHovered, this, [this](int x, int y, quint32 intensity) {
+            _pixelStatus->setText(tr("X: %1   Y: %2   Intensity: %3").arg(x).arg(y).arg(intensity));
+        });
 
-        auto* view = new ImageView(_tabs);
-        view->setImage(preview);
+        connect(view, &ImageView::pixelHoverCleared, _pixelStatus, &QLabel::clear);
         view->setContextMenuPolicy(Qt::CustomContextMenu);
         connect(view, &QWidget::customContextMenuRequested, this, [this, view](const QPoint& position) {
             _contextMenu->popup(view->viewport()->mapToGlobal(position));
@@ -87,6 +88,7 @@ void MainWindow::openFile()
         const auto index = _tabs->addTab(view, QFileInfo(path).fileName().replace("&", "&&"));
         _tabs->setTabToolTip(index, path);
         _tabs->setCurrentIndex(index);
+
         statusBar()->showMessage(path);
     } catch (const std::exception& error) {
         QMessageBox::warning(this, tr("Could not open image"),
