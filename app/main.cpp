@@ -1,5 +1,6 @@
 #include <iostream>
 #include <QApplication>
+#include <QFile>
 
 #include "FileParser.h"
 #include "widgets/main_window/MainWindow.h"
@@ -22,7 +23,12 @@ int main(int argc, char* argv[])
     const QScopedPointer app(createApplication(argc, argv));
 
 
-    if (qobject_cast<QApplication *>(app.data())) {
+    if (auto* gui = qobject_cast<QApplication*>(app.data())) {
+        QFile theme(QStringLiteral(":/theme/medical.qss"));
+        if (theme.open(QIODevice::ReadOnly)) {
+            gui->setStyleSheet(QString::fromUtf8(theme.readAll()));
+        }
+
         auto window = new MainWindow();
         window->show();
     } else {
