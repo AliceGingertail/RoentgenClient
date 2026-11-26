@@ -1,0 +1,14 @@
+set(VCPKG_TARGET_ARCHITECTURE x64)
+set(VCPKG_CRT_LINKAGE dynamic)
+set(VCPKG_LIBRARY_LINKAGE static)
+set(VCPKG_CMAKE_SYSTEM_NAME Linux)
+
+if(PORT STREQUAL "minc")
+    # ParseArgv.c юзает старые C опр
+    list(APPEND VCPKG_CMAKE_CONFIGURE_OPTIONS
+        -DCMAKE_C_STANDARD=17
+        -DCMAKE_C_STANDARD_REQUIRED=ON)
+elseif(PORT STREQUAL "itk")
+    # FileParser юзает itk::RawImageIO
+    list(APPEND VCPKG_CMAKE_CONFIGURE_OPTIONS -DModule_ITKIORAW=ON)
+endif()
