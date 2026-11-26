@@ -43,5 +43,5 @@ HelpPopup::HelpPopup(QWidget* parent)
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
     layout->addWidget(buttons);
 
-    setFixedSize(sizeHint().expandedTo(QSize(420, 0)));
+    setFixedSize(QDialog::sizeHint().expandedTo(QSize(420, 0)));
 }

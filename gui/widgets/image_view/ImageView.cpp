@@ -18,9 +18,9 @@ QImage makePreview(const XrayImage& image, int brightness, int contrast)
 {
     const auto grayscale = image.toGrayscale8(brightness, contrast);
     QImage preview(XrayImage::width, XrayImage::height, QImage::Format_Grayscale8);
-    for (int row = 0; row < preview.height(); ++row) {
+    for (int row = 0; row < preview.height(); ++row)
         std::copy_n(grayscale.data() + row * preview.width(), preview.width(), preview.scanLine(row));
-    }
+
     return preview;
 }
 }
@@ -56,13 +56,12 @@ ImageView::ImageView(XrayImage image, QWidget* parent)
 void ImageView::setAdjustment(int brightness, int contrast)
 {
     const std::pair adjustment{brightness, contrast};
-    if (_adjustment == adjustment) {
+    if (_adjustment == adjustment)
         return;
-    }
+
     _adjustment = adjustment;
-    if (!_rendering) {
+    if (!_rendering)
         renderPreview();
-    }
 }
 
 void ImageView::renderPreview()
@@ -79,9 +78,9 @@ void ImageView::renderPreview()
 
 bool ImageView::viewportEvent(QEvent* event)
 {
-    if (event->type() == QEvent::Leave) {
+    if (event->type() == QEvent::Leave)
         emit pixelHoverCleared();
-    }
+
     return QGraphicsView::viewportEvent(event);
 }
 

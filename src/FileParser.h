@@ -6,10 +6,10 @@
 
 struct XrayImage
 {
-    static constexpr int width = 512;
-    static constexpr int height = 1024;
+    static constexpr uint16_t width = 512;
+    static constexpr uint16_t height = 1024;
 
-    std::vector<std::uint32_t> intensities;
+    std::vector<uint32_t> intensities;
 
     [[nodiscard]] std::vector<std::uint8_t> toGrayscale8(int brightness = 0, int contrast = 0) const;
 };
