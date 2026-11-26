@@ -2,7 +2,7 @@
 #include <QApplication>
 
 #include "FileParser.h"
-#include "MainWindow.h"
+#include "widgets/main_window/MainWindow.h"
 
 constexpr std::string roentgen_version = ROENTGEN_VERSION;
 
