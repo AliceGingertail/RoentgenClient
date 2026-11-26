@@ -27,26 +27,29 @@ MainWindow::MainWindow(QWidget* parent)
     resize(1024, 720);
     setCentralWidget(_tabs);
 
+    // Поведение табов
     _tabs->setTabsClosable(true);
-    connect(_tabs, &QTabWidget::tabCloseRequested, this, [this](int index) {
+    connect(_tabs, &QTabWidget::tabCloseRequested, this, [this](const int index) {
         auto* page = _tabs->widget(index);
         _tabs->removeTab(index);
         page->deleteLater();
     });
 
-    auto* fileMenu = menuBar()->addMenu(tr("&File"));
-    auto* openAction = fileMenu->addAction(tr("&Open…"));
+    const auto fileMenu = menuBar()->addMenu(tr("&File"));
+    const auto openAction = fileMenu->addAction(tr("&Open…"));
     openAction->setShortcut(QKeySequence::Open);
 
     connect(openAction, &QAction::triggered, this, &MainWindow::openFile);
 
+    // adjustment action
     auto* adjustmentAction = fileMenu->addAction(tr("&Brightness/contrast…"));
     adjustmentAction->setEnabled(false);
     connect(adjustmentAction, &QAction::triggered, this, &MainWindow::showBrightnessContrast);
-    connect(_tabs, &QTabWidget::currentChanged, adjustmentAction, [adjustmentAction](int index) {
+    connect(_tabs, &QTabWidget::currentChanged, adjustmentAction, [adjustmentAction](const int index) {
         adjustmentAction->setEnabled(index >= 0);
     });
 
+    // quit action
     auto quitAction = fileMenu->addAction(tr("&Quit"));
     connect(quitAction, &QAction::triggered, this, &MainWindow::close);
 
@@ -54,11 +57,13 @@ MainWindow::MainWindow(QWidget* parent)
     _contextMenu->addAction(openAction);
     _contextMenu->addAction(adjustmentAction);
 
+    // Поведение контекстного меню
     _tabs->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(_tabs, &QWidget::customContextMenuRequested, this, [this](const QPoint& position) {
         _contextMenu->popup(_tabs->mapToGlobal(position));
     });
 
+    // Help меню
     auto* helpMenu = menuBar()->addMenu(tr("&Help"));
     auto* aboutAction = helpMenu->addAction(tr("&About"));
     connect(aboutAction, &QAction::triggered, this, &MainWindow::showAbout);
